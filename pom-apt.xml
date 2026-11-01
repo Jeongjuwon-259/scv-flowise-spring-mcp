@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  agentapt (com.samsung.gsre.svcm.agentapt) - Spring Boot 3.3.5 고정
+
+  소스 import 분석 결과 -> 의존성 매핑
+    org.springframework.web.*, jakarta.servlet.*        -> spring-boot-starter-web
+    org.springframework.cache.*                          -> spring-boot-starter-cache
+    org.springframework.data.redis.*                     -> spring-boot-starter-data-redis
+    io.github.resilience4j.circuitbreaker.*              -> resilience4j-spring-boot3 (+ starter-aop)
+    org.springaicommunity.mcp.annotation.McpTool         -> spring-ai-starter-mcp-server-webmvc (Spring AI 1.1.x)
+    McpSyncClient (ApiSearchTool 주석, MCP_STREAMABLE_HTTP) -> 위 스타터에 포함된 MCP Java SDK
+    ChatClient (Nl2SqlTool / JiraWorklogTool / Orchestration 주석) -> spring-ai-starter-model-openai (교체 가능)
+    com.fasterxml.jackson.*, org.slf4j.*                 -> starter-web 에 포함
+    org.junit.jupiter.*                                  -> spring-boot-starter-test
+
+  [주의] Spring AI 1.1.x 공식 지원 범위는 Spring Boot 3.4.x / 3.5.x 이다(1.1.8 은 Boot 3.5.15 기준 빌드).
+         Boot 3.3.5(Spring Framework 6.1.x) 조합은 공식 지원 밖이므로 기동 테스트로 반드시 확인한다.
+         @McpTool 과 protocol=STATELESS 는 Spring AI 1.1 기능이라 1.0.x 로 내릴 수 없다.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.5</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.samsung.gsre.svcm</groupId>
+    <artifactId>agentapt</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>agentapt</name>
+    <description>SVCM Agent Tool / Orchestration (MCP STATELESS server, NL2SQL, SQL result cache)</description>
+
+    <properties>
+        <!-- 소스가 record, switch 식, 패턴 매칭 instanceof, text block, Stream.toList() 사용 -> 17 이상 -->
+        <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- Boot BOM 에 없는 라이브러리만 버전 지정 -->
+        <spring-ai.version>1.1.8</spring-ai.version>
+        <!-- Boot 3.3 시기 버전. 최신은 2.4.0 -->
+        <resilience4j.version>2.2.0</resilience4j.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-bom</artifactId>
+                <version>${resilience4j.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- ===== Web: RestController, OncePerRequestFilter(ToolAuthFilter), RestClient(ApiSearchTool REST 커넥터) ===== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- ===== SQL 결과 캐시: @EnableCaching, @Cacheable, CacheResolver, RedisCacheManager ===== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+        <!-- StringRedisTemplate(DataVersionRegistry), RedisConnectionFactory, run 토큰 해시 저장 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- ===== 커넥터 서킷브레이커: CircuitBreakerRegistry 빈 자동 구성 ===== -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-spring-boot3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
+        <!-- ===== MCP 서버(Streamable HTTP, STATELESS) =====
+             application.yml:
+               spring.ai.mcp.server.protocol: STATELESS
+               spring.ai.mcp.server.streamable-http.mcp-endpoint: /internal/mcp
+             MCP Java SDK(io.modelcontextprotocol.sdk:mcp)가 함께 들어와 McpSyncClient 도 쓸 수 있다. -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+        </dependency>
+
+        <!-- ===== LLM: ChatClient (SQL 생성, Jira 필터 구조화 추출, 의도 분류) =====
+             OpenAI 호환 엔드포인트(vLLM 등) 기준. 다른 공급자면 이 스타터만 바꾼다
+             (예: spring-ai-starter-model-azure-openai, spring-ai-starter-model-ollama). -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
+
+        <!-- ===== 기존 sqlgw(SqlExecutor/SqlGatewayService) 용. 기존 프로젝트 설정에 맞춰 주석 해제 =====
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        -->
+
+        <!-- ===== Test: SufficiencyJudgeTest, ApiSearchToolDcAgentTest (JUnit 5) ===== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- maven-compiler-plugin 의 -parameters 는 spring-boot-starter-parent 가 이미 켠다
+                 (@McpToolParam, @PathVariable 이름 해석에 필요) -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  appmgmt (com.samsung.gsre.appmgmt) - Spring Boot 3.3.5 고정
+
+  소스 import 분석 결과 -> 의존성 매핑
+    org.springframework.web.*, org.springframework.http.*, @Value -> spring-boot-starter-web
+    java.text.Normalizer, java.security.MessageDigest 등              -> JDK (추가 의존성 없음)
+    org.junit.jupiter.* (DynamicTest, TestFactory), Jackson(테스트)   -> spring-boot-starter-test (+ starter-web 의 Jackson)
+
+  테스트 리소스: 설계방안/reference/matching/test_vectors.json 을
+               src/test/resources/name-matching/test_vectors.json 으로 복사해야 AppNameResolverVectorTest 가 돈다.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.5</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.samsung.gsre</groupId>
+    <artifactId>appmgmt</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>appmgmt</name>
+    <description>APP 관리: 시스템명 해석(AppNameResolver), 담당자 상세, 서비스 토큰 가드</description>
+
+    <properties>
+        <!-- record, 패턴 매칭 instanceof 사용 -> 17 이상 -->
+        <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- RestController(AppSearchController, ContactDetailController), ResponseEntity, @Value(ServiceTokenGuard) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- AppNameResolverVectorTest (JUnit 5 DynamicTest, Jackson ObjectMapper) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
